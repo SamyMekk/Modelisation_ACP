@@ -1,0 +1,269 @@
+---
+title: "Compte Rendu TD ACP"
+author: "Samy Mekkaoui"
+date: "26/02/2021"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+pkgs<-c("dyplr","ggplot2","FactoMineR","factoextra")
+install.packages(pkgs, repos = "http://cran.us.r-project.org")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+Dans ce TP, nous allons nous intéresser à une méthode de codage de l'ACP que nous allons tester sur une base de données de 27 individus qui ont effectué des épreuves sportives. Le dataset que nous allons utiliser s'appelera "decathlon2" et on essayera de plot un graphique qui permettra de comprendre les différentes interactions entre les individus  par rapport aux épreuves auxquels ils ont participé ainsi que les interactions qui peuvent exister entre les épreuves.
+
+# Réponses aux Questions
+
+### Question n°4
+
+```{r}
+d=10
+n=2000
+X=matrix(rnorm(d*n),nrow=d,ncol=n)
+
+t0=proc.time()[3]
+eigen(X%*%t(X))$values
+proc.time()[3]-t0
+
+# On calcule le temps pour calculer les valeurs propres de la matrice X%*%t(X)
+
+t1=proc.time()[3]
+ev=eigen(t(X)%*%X)$values
+proc.time()[3]-t1
+
+#On calcule le temps pour calculer les valeurs propres de la matrice t(X)X%*%X
+
+#On voit que le temps de calcul des valeurs propres de X%*%t(X) est plus rapide puisque c'est une matrice 10x10.Or la matrice t(X)*%*X était de dimension 2000x2000 mais par des arguments d'algèbre linéaire, on sait que les 10 premières valeurs propres sont les mêmes. Ainsi, il suffit de calculer les valeurs propres de la matrice de plus petite dimension ici X*%*t(X) afin de minimiser les calculs.
+```
+
+### Question n°5
+
+On peut utiliser ce package car on sait que l'ACP permet de réduire la dimension et que les valeurs propres de module maximal sont celles qui vont permettre de mieux représenter la base de données initiale ( On doit chercher l'inertie maximale pour ne pas que le dataset de base soit totalement différent). Ainsi, la méthode eigs permet d'effectuer une ACP sur un gros volume de données.
+
+
+### Question sur le codage de l'ACP
+
+#### Partie Code
+
+```{r message=FALSE,warning=FALSE}
+
+#Initialisation
+library(dplyr)
+library(ggplot2)
+library("FactoMineR")
+library("factoextra")
+
+# Question 1
+
+decathlon2.active <- t(decathlon2[,1:10])
+
+# Question 2
+
+a1=mean(decathlon2.active[1,])
+a2=mean(decathlon2.active[2,])
+a3=mean(decathlon2.active[3,])
+a4=mean(decathlon2.active[4,])
+a5=mean(decathlon2.active[5,])
+a6=mean(decathlon2.active[6,])
+a7=mean(decathlon2.active[7,])
+a8=mean(decathlon2.active[8,])
+a9=mean(decathlon2.active[9,])
+a10=mean(decathlon2.active[10,])
+
+#On calcule les moyennes des individus pour chacune des épreuves
+
+a<-c(a1,a2,a3,a4,a5,a6,a7,a8,a9,a10)
+
+m=matrix(1:1,nrow=10,ncol=27,byrow=TRUE)
+
+b1=a1*m[1,]
+b2=a2*m[2,]
+b3=a3*m[3,]
+b4=a4*m[4,]
+b5=a5*m[5,]
+b6=a6*m[6,]
+b7=a7*m[7,]
+b8=a8*m[8,]
+b9=a9*m[9,]
+b10=a10*m[10,]
+
+l=c(b1,b2,b3,b4,b5,b6,b7,b8,b9,b10)
+
+c=matrix(l,nrow=10,ncol=27,byrow=TRUE)
+
+
+De<-decathlon2.active-c
+
+#On a centré la matrice
+
+# Question 3 
+
+d1=sd(decathlon2.active[1,])
+d2=sd(decathlon2.active[2,])
+d3=sd(decathlon2.active[3,])
+d4=sd(decathlon2.active[4,])
+d5=sd(decathlon2.active[5,])
+d6=sd(decathlon2.active[6,])
+d7=sd(decathlon2.active[7,])
+d8=sd(decathlon2.active[8,])
+d9=sd(decathlon2.active[9,])
+d10=sd(decathlon2.active[10,])
+
+# on calcule les écarts types pour chacune des épreuves
+
+De[1,]<-De[1,]/d1
+De[2,]<-De[2,]/d2
+De[3,]<-De[3,]/d3
+De[4,]<-De[4,]/d4
+De[5,]<-De[5,]/d5
+De[6,]<-De[6,]/d6
+De[7,]<-De[7,]/d7
+De[8,]<-De[8,]/d8
+De[9,]<-De[9,]/d9
+De[10,]<-De[10,]/d10
+
+#On réduit la matrice
+
+print(De)
+
+#On voit que les valeurs prises par les variables centrées sont du même ordre de grandeur ce qui permet une comparaison plus ohérente
+
+#Question 4
+
+HatSigma<- (De%*%t(De))/26
+
+print(HatSigma)
+
+#Question 5
+
+elmtPropre = eigen(HatSigma)
+P <- elmtPropre$vectors
+D <- elmtPropre$values
+
+
+#Question 6
+
+Tr=sum(diag(HatSigma)) # Trace de la matrice de covariance
+S=sum(D)
+
+print(Tr) # Variance totale du nuage de points
+print(S)
+
+# On voit que la variance totale du nuage de points est égale à la trace de la matrice de covariance mais aussi à la trace de D car la trace est invariante par similitude
+
+# Questions 7 et 8
+
+a<-eigen(HatSigma)$vectors[,1]/(sqrt(eigen(HatSigma)$values[1]))
+
+b<-eigen(HatSigma)$vectors[,2]/(sqrt(eigen(HatSigma)$values[2]))
+c<-eigen(HatSigma)$vectors[,3]/(sqrt(eigen(HatSigma)$values[3]))
+P1<-matrix(c(a,b),nrow=10,ncol=2,byrow=FALSE)
+P2<-matrix(c(a,c),nrow=10,ncol=2,byrow=FALSE)
+
+Projection12prem=t(De)%*%P1
+Projection13prem=t(De)%*%P2
+Projection12prem=-Projection12prem
+Projection13prem=-Projection13prem
+
+ 
+
+
+```
+#### Suite Question 7
+
+La i-ème coordonnée du vecteur $\frac{v_1}{\sqrt{e_1}}$ où v1 est le vecteur propre associé à la plus grande valeur propre e1 représente la corrélation entre le sport ‘i’ et la composante principale n°1. On projette ce vecteur sur la matrice dont les lignes représentent les athlètes et les colonnes représentent les sports c’est-à-dire la transposée de la matrice initiale. Ainsi, la i-ème coordonnée du produit matriciel correspond à $\sum{j}(^tC_i)_j\times x_j$ avec Ci la i-ème colonne de la matrice decathlon2.active (colonne des performances du i-ème athlète dans chaque sport centré et réduit) et xj la corrélation entre la première composante principale et le sport ‘j’. Cela nous donne donc la performance du i-ème athlète au ‘nouveau sport’ représentant la première composante principale. On procède de la même manière pour le vecteur propre v2 associé à la deuxième plus grande valeur propre e2.Ainsi, celà revient à bien calculer le produit de l'énoncé $^{t}De\times[\frac{v_1}{\sqrt{e_1}}, \frac{v_2}{\sqrt{e_2}}]$ ou De est la matrice centrée réduite de decathlon2.active
+
+
+#### Partie sur le Plot des Graphiques
+
+##### Graphique obtenue à partir du code précédent
+
+##### Graphique dans le plan factoriel des 2 plus grandes valeurs propres
+```{r,echo=FALSE,warning=FALSE}
+plot(Projection12prem,type="p",col="blue",main="ACP pour les 1er et second vecteur propre",xlab="1er vecteur propre avec une inertie de 37.5%",ylab="2ème vecteur propre avec une inertie de 17.45%")
+  text(Projection12prem[1,1],Projection12prem[1,2],label="SEBRLE")
+  text(Projection12prem[2,1],Projection12prem[2,2],label="CLAY")
+  text(Projection12prem[3,1],Projection12prem[3,2],label="Bernard")
+  text(Projection12prem[4,1],Projection12prem[4,2],label="Yurkov")
+  text(Projection12prem[5,1]-0.03,Projection12prem[5,2],label="ZSIVOCZKY")
+  text(Projection12prem[6,1],Projection12prem[6,2],label="McMULLEN")
+  text(Projection12prem[7,1],Projection12prem[7,2],label="MARTINEAU")
+  text(Projection12prem[8,1],Projection12prem[8,2],label="HERNU")
+  text(Projection12prem[9,1],Projection12prem[9,2],label="BARRAS")
+  text(Projection12prem[10,1],Projection12prem[10,2],label="NOOL")
+  text(Projection12prem[11,1]+0.08,Projection12prem[11,2],label="BOURGUIGNON")
+  text(Projection12prem[12,1],Projection12prem[12,2],label="Sebrle")
+  text(Projection12prem[13,1],Projection12prem[13,2],label="Clay")
+  text(Projection12prem[14,1],Projection12prem[14,2],label="Karpov")
+  text(Projection12prem[15,1],Projection12prem[15,2],label="Macey")
+  text(Projection12prem[16,1],Projection12prem[16,2],label="Warners")
+  text(Projection12prem[17,1],Projection12prem[17,2],label="Zsivoczky")
+  text(Projection12prem[18,1],Projection12prem[18,2]-0.02,label="Hernu")
+  text(Projection12prem[19,1],Projection12prem[19,2],label="Bernard")
+  text(Projection12prem[20,1],Projection12prem[20,2],label="Schwarzl")
+  text(Projection12prem[21,1],Projection12prem[21,2],label="Pogorelov")
+  text(Projection12prem[22,1],Projection12prem[22,2]+0.04,label="Schoenbeck")
+  text(Projection12prem[23,1],Projection12prem[23,2],label="Barras")
+  text(Projection12prem[24,1],Projection12prem[24,2],label="KARPOV")
+  text(Projection12prem[25,1],Projection12prem[25,2],label="WARNERS")
+  text(Projection12prem[26,1],Projection12prem[26,2],label="Nool")
+  text(Projection12prem[27,1],Projection12prem[27,2],label="Drews")
+  
+```
+
+##### Graphique dans le plan factoriel de la 1ère et de la 3ème plus grande valeur propre
+
+```{r,echo=FALSE,warning=FALSE}
+plot(Projection13prem,type="p",col="blue",main="ACP pour les 1er et 3ème vecteur propre",xlab="1er vecteur propre avec une inertie de 37.5%",ylab="3ème vecteur propre avec une inertie de 15.2%")
+```
+
+##### GGplot obtenu pour le plan factoriel des 2 plus grandes valeurs propres
+
+
+```{r,echo=FALSE,warning=FALSE}
+df3=as.data.frame(Projection12prem)
+ggplot(df3,aes(x="1er vecteur propre",y="2ème vecteurpropre",))+geom_point(aes(x=Projection12prem[,1],y=Projection12prem[,2]))
+```
+
+##### GGplot obtenu pour le plan factoriel de la 1ère et de la 3ème plus grande valeur propre
+
+```{r,echo=FALSE,warning=FALSE}
+df4=as.data.frame(Projection13prem)
+ggplot(df3,aes(x="1er vecteur propre",y="3ème vecteurpropre",))+geom_point(aes(x=Projection13prem[,1],y=Projection13prem[,2]))
+
+```
+
+
+### Question 8  
+
+Déjà, on remarque que les abscisses entre les 2 graphiques n'ont pas changé puisqu'on a toujours projeté sur la 1er vecteur propre. cependant, les ordonnées des points ont elle été modifiés pusiqu'on a projeté sur la 3ème valeur propre
+
+
+##### Graphique obtenue à partir de la fonction PCA déjà implémentée
+```{r,echo=FALSE}
+XX=scale(t(decathlon2.active))
+PCA(XX)
+```
+
+## Analyse des Plots pour le GGPLOT du plan factoriel des 2 premières valeurs propres
+
+On peut remarquer que le plot ressemble bien à celui que l'on aurait obtenu en utilisant directement la fonction ACP déjà implémentée dans R donc nos résultats semblent cohérents.
+Par ailleurs,on remarque que des clusters se dessinent sur le graphique. En effet, on peut notamment citer le groupe composé par Karpov,Sebrle et Clay qui ont donc des résultats similaires en fonction des épreuves.
+On peut notamment peut être dire que ce cluster a des résultats assez différents par rapport à ceux de Bourguignon par exemple puisque même si leur proximité par rapport à l'axe de la seconde valeur propre est forte, ils sont très éloignés par rapport à la première valeur propre qui contient la majorité de l'information (35% d'inertie totale).On distingue également d'autres clusters qui signifient que les individus ont globalement des résultats assez similaires tels que Bernard,Schoenbeck,Sebrle qui eux aussi ont des résultats similaires
+
+
+On peut également analyser le second graphique de l'ACP déja implémentée en disant que certaines variables ne semblent totalement pas corrélés. Par exemple, on peut parler du "LongJump" et du "X100" qui semblent totalement décorréler c'est à dire qu'un individu faisant de longs sauts aura plus tendance à être plus lant sur le X100. On peut également noter que les gens bons au X100 sont aussi bons au X400 , ce qui paraît assez naturel.
+
+
+Par ailleurs , on peut critiquer cette ACP puisque l'inertie combinée des 2 valeurs propres n'est seulement que de 55% donc on perd près de 45% de l'information ce qui ne peut être négligé.
+On peut également critiquer l'ACP en dsiant qu'elle ne peut pas nous dire dans quels disciplines les individus appartenant à un cluster ont les résultats similaires
+
+# Conclusion
+
+Pour conclure, on peut donc dire que dans ce TP, on a appris à effectuer une ACP afin de rendre un problème qui comportait un gros volume de données plus lisible en essayant de garder les informations essentielles qui étaient présentes dans le dataset initial en les projetant dans un plan factoriel. l'ACP nous permet aussi de faire  une première analyse des résultats pour comprendre les liens qui peuvent exister entre les individus via leurs performances sportives ainsi que les liaisions qui peuvent exister entre les variables.
